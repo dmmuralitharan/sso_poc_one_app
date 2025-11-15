@@ -9,20 +9,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
 
-  Get.put(AuthController());
+  final authController = Get.put(AuthController());
+  final loggedIn = await authController.isLoggedIn();
 
-  runApp(const MyApp());
+  runApp(MyApp(loggedIn: loggedIn));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool loggedIn;
+  const MyApp({super.key, required this.loggedIn});
 
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
       title: "Google Login",
       debugShowCheckedModeBanner: false,
-      initialRoute: AppRoutes.login,
+      initialRoute: loggedIn ? AppRoutes.user : AppRoutes.login,
       getPages: AppPages.pages,
     );
   }

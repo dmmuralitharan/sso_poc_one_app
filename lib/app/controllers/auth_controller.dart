@@ -1,11 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:convert';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:sso_poc_one_app/app/models/user_model.dart';
+import 'package:sso_poc_one_app/app/utils/app_constants.dart';
 
 class AuthController extends GetxController {
+  final storage = const FlutterSecureStorage();
   final FirebaseAuth auth = FirebaseAuth.instance;
   final GoogleSignIn googleSignIn = GoogleSignIn(scopes: ['email']);
+
+  // -------------------------
+  // CHECK IF USER IS LOGGED IN
+  // -------------------------
+  Future<bool> isLoggedIn() async {
+    final accessToken = await storage.read(key: "access_token");
+    final firebaseUid = await storage.read(key: "firebase_uid");
+
+    return accessToken != null && firebaseUid != null;
+  }
+
+  // -------------------------
+  // FETCH USER FROM BACKEND
+  // -------------------------
+  Future<void> fetchUserFromBackend() async {
+    final uid = getAccessToken();
+    final token = getFirebaseUid();
+
+    final response = await http.get(
+      Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/user/$uid"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      // update your app state with user info
+    }
+  }
 
   // -------------------------
   // EMAIL REGISTER
@@ -16,7 +51,13 @@ class AuthController extends GetxController {
         email: email,
         password: password,
       );
-      return userCredential.user;
+
+      final user = userCredential.user;
+      if (user != null) {
+        await registerToBackend(user, password: password);
+      }
+
+      return user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         Get.snackbar(
@@ -54,7 +95,12 @@ class AuthController extends GetxController {
         email: email,
         password: password,
       );
-      return userCredential.user;
+      final user = userCredential.user;
+      if (user != null) {
+        await loginToBackend(user);
+      }
+
+      return user;
     } catch (e) {
       debugPrint("Login Error: $e");
       return null;
@@ -77,7 +123,13 @@ class AuthController extends GetxController {
 
       try {
         final userCred = await auth.signInWithCredential(credential);
-        return userCred.user;
+        final user = userCred.user;
+
+        if (user != null) {
+          await registerToBackend(user);
+        }
+
+        return user;
       } on FirebaseAuthException catch (e) {
         if (e.code == 'account-exists-with-different-credential') {
           Get.snackbar(
@@ -100,5 +152,80 @@ class AuthController extends GetxController {
   Future<void> signOut() async {
     await auth.signOut();
     await googleSignIn.signOut();
+
+    await storage.delete(key: "access_token");
+    await storage.delete(key: "firebase_uid");
+  }
+
+  // -------------------------
+  // LOGIN TO BACKEND
+  // -------------------------
+  Future<void> loginToBackend(User firebaseUser) async {
+    try {
+      final response = await http.post(
+        Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/login"),
+        headers: {
+          "Content-Type": "application/json",
+          "X-FIREBASE-UID": firebaseUser.uid,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final accessToken = data['access_token'];
+        final firebaseUid = data['user']['firebase_uid'];
+
+        // Store in secure storage
+        await storage.write(key: "access_token", value: accessToken);
+        await storage.write(key: "firebase_uid", value: firebaseUid);
+
+        debugPrint("User logged in backend successfully");
+      } else {
+        debugPrint(
+            "Backend login failed: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      debugPrint("Backend login error: $e");
+    }
+  }
+
+  // -------------------------
+  // REGISTER TO BACKEND
+  // -------------------------
+  Future<void> registerToBackend(User firebaseUser, {String? password}) async {
+    final user = AppUser(
+      firebaseUid: firebaseUser.uid,
+      email: firebaseUser.email!,
+      name: firebaseUser.displayName,
+      photoUrl: firebaseUser.photoURL,
+      password: password,
+      provider: password != null ? "password" : "google",
+    );
+
+    final response = await http.post(
+      Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/register"),
+      headers: {
+        "Content-Type": "application/json",
+        "X-FIREBASE-UID": firebaseUser.uid,
+      },
+      body: jsonEncode(user.toJson()),
+    );
+
+    if (response.statusCode == 201) {
+      debugPrint("User registered to backend successfully");
+    } else {
+      debugPrint("Backend registration failed: ${response.body}");
+    }
+  }
+
+  // -------------------------
+  // GET STORED TOKEN/UID
+  // -------------------------
+  Future<String?> getAccessToken() async {
+    return await storage.read(key: "access_token");
+  }
+
+  Future<String?> getFirebaseUid() async {
+    return await storage.read(key: "firebase_uid");
   }
 }
