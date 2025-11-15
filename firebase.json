@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"sso-poc-000","appId":"1:973711234564:android:28d778dccd7bc638eb0751","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"sso-poc-000","configurations":{"android":"1:973711234564:android:28d778dccd7bc638eb0751","ios":"1:973711234564:ios:d3c3e71aee34f14aeb0751"}}}}}}
