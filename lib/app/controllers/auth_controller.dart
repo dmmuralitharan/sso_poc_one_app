@@ -17,8 +17,30 @@ class AuthController extends GetxController {
         password: password,
       );
       return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        Get.snackbar(
+          "Account Exists",
+          "This email is already registered. Try logging in instead.",
+        );
+        return null;
+      }
+
+      if (e.code == 'invalid-email') {
+        Get.snackbar("Invalid Email", "Please enter a valid email address.");
+        return null;
+      }
+
+      if (e.code == 'weak-password') {
+        Get.snackbar(
+            "Weak Password", "Password should be at least 6 characters.");
+        return null;
+      }
+
+      Get.snackbar("Registration Failed", e.message ?? "Unknown error");
+      return null;
     } catch (e) {
-      debugPrint("Register Error: $e");
+      Get.snackbar("Error", e.toString());
       return null;
     }
   }
@@ -39,6 +61,9 @@ class AuthController extends GetxController {
     }
   }
 
+  // -------------------------
+  // SIGN-IN WITH GOOGLE
+  // -------------------------
   Future<User?> signInWithGoogle() async {
     try {
       final googleUser = await googleSignIn.signIn();
