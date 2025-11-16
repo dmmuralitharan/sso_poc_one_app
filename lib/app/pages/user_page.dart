@@ -10,7 +10,6 @@ class UserPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
 
-    // Load user data on UI build (safe because storage read is fast)
     auth.loadBackendUser();
 
     return Scaffold(
@@ -42,6 +41,14 @@ class UserPage extends StatelessWidget {
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              const Text(
+                "SSO APP 1",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               // Profile Image
               CircleAvatar(
                 radius: 50,
@@ -58,7 +65,8 @@ class UserPage extends StatelessWidget {
 
               Text(
                 user['name'] ?? "No Name",
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
 
               const SizedBox(height: 10),

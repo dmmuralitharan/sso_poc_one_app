@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: "Google Login",
+      title: "SSO POC One App",
       debugShowCheckedModeBanner: false,
       initialRoute: loggedIn ? AppRoutes.user : AppRoutes.login,
       getPages: AppPages.pages,
