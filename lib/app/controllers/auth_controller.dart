@@ -263,6 +263,10 @@ class AuthController extends GetxController {
     final jsonStr = await storage.read(key: AppConstants.userData);
     if (jsonStr == null) return null;
 
+    debugPrint("-----------------------------------");
+    debugPrint("User Data JSON: $jsonStr");
+    debugPrint("-----------------------------------");
+
     return jsonDecode(jsonStr);
   }
 }
