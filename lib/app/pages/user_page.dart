@@ -9,17 +9,11 @@ class UserPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
-
-    auth.loadBackendUser();
+    final user = auth.auth.currentUser;
 
     return Scaffold(
       appBar: AppBar(
-        title: Obx(() {
-          final user = auth.backendUser.value;
-          final name = user?['name'] ?? user?['email'] ?? '';
-
-          return Text("Welcome $name");
-        }),
+        title: Text("Welcome ${user?.displayName ?? user?.email ?? ''}"),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -31,60 +25,55 @@ class UserPage extends StatelessWidget {
         ],
       ),
       body: Center(
-        child: Obx(() {
-          final user = auth.backendUser.value;
-
-          if (user == null) {
-            return const CircularProgressIndicator();
-          }
-
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                "SSO APP 1",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 10),
+            const Text(
+              "SSO APP 1",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
-              // Profile Image
-              CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey.shade300,
-                backgroundImage: (user['photo_url'] != null)
-                    ? NetworkImage(user['photo_url'])
-                    : null,
-                child: user['photo_url'] == null
-                    ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                    : null,
-              ),
+            ),
+            const SizedBox(height: 10),
+            // Profile Image Section
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.grey.shade300,
+              backgroundImage: (user?.photoURL != null)
+                  ? NetworkImage(user!.photoURL!)
+                  : null,
+              child: user?.photoURL == null
+                  ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                  : null,
+            ),
 
-              const SizedBox(height: 25),
+            const SizedBox(height: 25),
 
-              Text(
-                user['name'] ?? "No Name",
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+            // Name
+            Text(
+              user?.displayName ?? "No Name",
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
 
-              const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-              Text(
-                user['email'] ?? "No Email",
-                style: const TextStyle(fontSize: 17),
-              ),
+            // Email
+            Text(
+              user?.email ?? "No Email",
+              style: const TextStyle(fontSize: 17),
+            ),
 
-              const SizedBox(height: 30),
+            const SizedBox(height: 30),
 
-              Text(
-                "Backend UID: ${user['id']}",
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-              ),
-            ],
-          );
-        }),
+            Text(
+              "UID: ${user?.uid}",
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -17,27 +17,19 @@ class AuthController extends GetxController {
   // CHECK IF USER IS LOGGED IN
   // -------------------------
   Future<bool> isLoggedIn() async {
-    final accessToken = await getAccessToken();
-    final firebaseUid = await getFirebaseUid();
-    final userData = await getUserData();
+    final user = FirebaseAuth.instance.currentUser;
 
-    return accessToken != null && firebaseUid != null && userData != null;
-  }
-
-  Rxn<Map<String, dynamic>> backendUser = Rxn<Map<String, dynamic>>();
-
-  Future<void> loadBackendUser() async {
-    final userDataJSON = await getUserData();
-
-    if (userDataJSON != null) {
-      backendUser.value = userDataJSON;
+    if (user != null) {
+      return true;
     }
+
+    return false;
   }
 
   // -------------------------
   // EMAIL REGISTER
   // -------------------------
-  Future<AppUser?> register(String email, String password) async {
+  Future<User?> register(String email, String password) async {
     try {
       UserCredential userCredential = await auth.createUserWithEmailAndPassword(
         email: email,
@@ -47,8 +39,8 @@ class AuthController extends GetxController {
       final user = userCredential.user;
       if (user != null) {
         await registerToBackend(user, password: password);
-        final userData = await loginToBackend(user);
-        return userData;
+        await loginToBackend(user);
+        return user;
       } else {
         return null;
       }
@@ -83,7 +75,7 @@ class AuthController extends GetxController {
   // -------------------------
   // EMAIL LOGIN
   // -------------------------
-  Future<AppUser?> login(String email, String password) async {
+  Future<User?> login(String email, String password) async {
     try {
       UserCredential userCredential = await auth.signInWithEmailAndPassword(
         email: email,
@@ -91,8 +83,8 @@ class AuthController extends GetxController {
       );
       final user = userCredential.user;
       if (user != null) {
-        final userData = await loginToBackend(user);
-        return userData;
+        await loginToBackend(user);
+        return user;
       } else {
         return null;
       }
@@ -105,7 +97,7 @@ class AuthController extends GetxController {
   // -------------------------
   // SIGN-IN WITH GOOGLE
   // -------------------------
-  Future<AppUser?> signInWithGoogle() async {
+  Future<User?> signInWithGoogle() async {
     try {
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) return null;
@@ -122,8 +114,8 @@ class AuthController extends GetxController {
 
         if (user != null) {
           await registerToBackend(user);
-          final userData = await loginToBackend(user);
-          return userData;
+          await loginToBackend(user);
+          return user;
         } else {
           return null;
         }
@@ -157,7 +149,7 @@ class AuthController extends GetxController {
   // -------------------------
   // LOGIN TO BACKEND
   // -------------------------
-  Future<AppUser> loginToBackend(User firebaseUser) async {
+  Future<void> loginToBackend(User firebaseUser) async {
     try {
       final response = await http.post(
         Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/login"),
@@ -186,7 +178,6 @@ class AuthController extends GetxController {
             key: AppConstants.userData, value: jsonEncode(appUser));
 
         debugPrint("User logged in backend successfully");
-        return appUser;
       } else {
         debugPrint(
             "Backend login failed: ${response.statusCode} - ${response.body}");
