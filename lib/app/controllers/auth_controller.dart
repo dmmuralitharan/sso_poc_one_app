@@ -19,14 +19,15 @@ class AuthController extends GetxController {
   Future<bool> isLoggedIn() async {
     final accessToken = await getAccessToken();
     final firebaseUid = await getFirebaseUid();
+    final userData = await getUserData();
 
-    return accessToken != null && firebaseUid != null;
+    return accessToken != null && firebaseUid != null && userData != null;
   }
 
   // -------------------------
   // EMAIL REGISTER
   // -------------------------
-  Future<User?> register(String email, String password) async {
+  Future<AppUser?> register(String email, String password) async {
     try {
       UserCredential userCredential = await auth.createUserWithEmailAndPassword(
         email: email,
@@ -36,9 +37,11 @@ class AuthController extends GetxController {
       final user = userCredential.user;
       if (user != null) {
         await registerToBackend(user, password: password);
+        final userData = await loginToBackend(user);
+        return userData;
+      } else {
+        return null;
       }
-
-      return user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         Get.snackbar(
@@ -70,7 +73,7 @@ class AuthController extends GetxController {
   // -------------------------
   // EMAIL LOGIN
   // -------------------------
-  Future<User?> login(String email, String password) async {
+  Future<AppUser?> login(String email, String password) async {
     try {
       UserCredential userCredential = await auth.signInWithEmailAndPassword(
         email: email,
@@ -78,10 +81,11 @@ class AuthController extends GetxController {
       );
       final user = userCredential.user;
       if (user != null) {
-        await loginToBackend(user);
+        final userData = await loginToBackend(user);
+        return userData;
+      } else {
+        return null;
       }
-
-      return user;
     } catch (e) {
       debugPrint("Login Error: $e");
       return null;
@@ -91,7 +95,7 @@ class AuthController extends GetxController {
   // -------------------------
   // SIGN-IN WITH GOOGLE
   // -------------------------
-  Future<User?> signInWithGoogle() async {
+  Future<AppUser?> signInWithGoogle() async {
     try {
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) return null;
@@ -108,9 +112,11 @@ class AuthController extends GetxController {
 
         if (user != null) {
           await registerToBackend(user);
+          final userData = await loginToBackend(user);
+          return userData;
+        } else {
+          return null;
         }
-
-        return user;
       } on FirebaseAuthException catch (e) {
         if (e.code == 'account-exists-with-different-credential') {
           Get.snackbar(
@@ -141,7 +147,7 @@ class AuthController extends GetxController {
   // -------------------------
   // LOGIN TO BACKEND
   // -------------------------
-  Future<void> loginToBackend(User firebaseUser) async {
+  Future<AppUser> loginToBackend(User firebaseUser) async {
     try {
       final response = await http.post(
         Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/login"),
@@ -155,20 +161,31 @@ class AuthController extends GetxController {
         final data = json.decode(response.body);
         final accessToken = data['access_token'];
         final firebaseUid = data['user']['firebase_uid'];
+        final userData = data['user'];
+
+        final appUser = AppUser.fromJson({
+          ...userData,
+        });
 
         // Store in secure storage
         await storage.write(
             key: AppConstants.ssoAppAccessTokenKey, value: accessToken);
         await storage.write(
             key: AppConstants.ssoAppFirebaseUId, value: firebaseUid);
+        await storage.write(
+            key: AppConstants.userData, value: jsonEncode(appUser));
 
         debugPrint("User logged in backend successfully");
+        return appUser;
       } else {
         debugPrint(
             "Backend login failed: ${response.statusCode} - ${response.body}");
+        throw Exception(
+            "Backend login failed with status code ${response.statusCode}");
       }
     } catch (e) {
       debugPrint("Backend login error: $e");
+      rethrow;
     }
   }
 
@@ -183,6 +200,7 @@ class AuthController extends GetxController {
       photoUrl: firebaseUser.photoURL,
       password: password,
       provider: password != null ? "password" : "google",
+      role: "user",
     );
 
     final response = await http.post(
@@ -204,21 +222,21 @@ class AuthController extends GetxController {
   // -------------------------
   // FETCH USER FROM BACKEND
   // -------------------------
-  Future<void> fetchUserFromBackend() async {
-    final uid = getFirebaseUid();
-    final token = getAccessToken();
+  // Future<void> fetchUserFromBackend() async {
+  //   final uid = getFirebaseUid();
+  //   final token = getAccessToken();
 
-    final response = await http.get(
-      Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/user/$uid"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
+  //   final response = await http.get(
+  //     Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/user/$uid"),
+  //     headers: {
+  //       "Authorization": "Bearer $token",
+  //     },
+  //   );
 
-    if (response.statusCode == 200) {
-      // update your app state with user info
-    }
-  }
+  //   if (response.statusCode == 200) {
+  //     // update your app state with user info
+  //   }
+  // }
 
   // -------------------------
   // GET STORED TOKEN/UID
@@ -229,5 +247,12 @@ class AuthController extends GetxController {
 
   Future<String?> getFirebaseUid() async {
     return await storage.read(key: AppConstants.ssoAppFirebaseUId);
+  }
+
+  Future<Map<String, dynamic>?> getUserData() async {
+    final jsonStr = await storage.read(key: AppConstants.userData);
+    if (jsonStr == null) return null;
+
+    return jsonDecode(jsonStr);
   }
 }

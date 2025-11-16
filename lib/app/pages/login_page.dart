@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
                 final user = await auth.login(email, password);
 
                 if (user != null) {
-                  Get.snackbar("Login Success", user.email ?? "No Email");
+                  Get.snackbar("Login Success", user.email);
 
                   /// Navigate to user page
                   Get.offAllNamed(AppRoutes.user);
@@ -75,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                 final user = await auth.signInWithGoogle();
 
                 if (user != null) {
-                  Get.snackbar("Login Success", user.displayName ?? "No Name");
+                  Get.snackbar("Login Success", user.name ?? "No Name");
                   Get.offAllNamed(AppRoutes.user);
                 } else {
                   Get.snackbar("Login Failed", "Google sign-in error");

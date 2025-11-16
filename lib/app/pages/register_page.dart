@@ -67,7 +67,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   await Future.delayed(const Duration(milliseconds: 800));
 
-                  Get.offAllNamed(AppRoutes.login);
+                  // Get.offAllNamed(AppRoutes.login);
+                  Get.offAllNamed(AppRoutes.user);
                 } else {
                   Get.snackbar("Failed", "Registration failed");
                 }
