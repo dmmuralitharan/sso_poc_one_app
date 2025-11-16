@@ -17,29 +17,10 @@ class AuthController extends GetxController {
   // CHECK IF USER IS LOGGED IN
   // -------------------------
   Future<bool> isLoggedIn() async {
-    final accessToken = await storage.read(key: "access_token");
-    final firebaseUid = await storage.read(key: "firebase_uid");
+    final accessToken = await getAccessToken();
+    final firebaseUid = await getFirebaseUid();
 
     return accessToken != null && firebaseUid != null;
-  }
-
-  // -------------------------
-  // FETCH USER FROM BACKEND
-  // -------------------------
-  Future<void> fetchUserFromBackend() async {
-    final uid = getAccessToken();
-    final token = getFirebaseUid();
-
-    final response = await http.get(
-      Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/user/$uid"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
-    );
-
-    if (response.statusCode == 200) {
-      // update your app state with user info
-    }
   }
 
   // -------------------------
@@ -153,8 +134,8 @@ class AuthController extends GetxController {
     await auth.signOut();
     await googleSignIn.signOut();
 
-    await storage.delete(key: "access_token");
-    await storage.delete(key: "firebase_uid");
+    await storage.delete(key: AppConstants.ssoAppAccessTokenKey);
+    await storage.delete(key: AppConstants.ssoAppFirebaseUId);
   }
 
   // -------------------------
@@ -176,8 +157,10 @@ class AuthController extends GetxController {
         final firebaseUid = data['user']['firebase_uid'];
 
         // Store in secure storage
-        await storage.write(key: "access_token", value: accessToken);
-        await storage.write(key: "firebase_uid", value: firebaseUid);
+        await storage.write(
+            key: AppConstants.ssoAppAccessTokenKey, value: accessToken);
+        await storage.write(
+            key: AppConstants.ssoAppFirebaseUId, value: firebaseUid);
 
         debugPrint("User logged in backend successfully");
       } else {
@@ -219,13 +202,32 @@ class AuthController extends GetxController {
   }
 
   // -------------------------
+  // FETCH USER FROM BACKEND
+  // -------------------------
+  Future<void> fetchUserFromBackend() async {
+    final uid = getFirebaseUid();
+    final token = getAccessToken();
+
+    final response = await http.get(
+      Uri.parse("${AppConstants.backendBaseUrl}/api/v1/auth/user/$uid"),
+      headers: {
+        "Authorization": "Bearer $token",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      // update your app state with user info
+    }
+  }
+
+  // -------------------------
   // GET STORED TOKEN/UID
   // -------------------------
   Future<String?> getAccessToken() async {
-    return await storage.read(key: "access_token");
+    return await storage.read(key: AppConstants.ssoAppAccessTokenKey);
   }
 
   Future<String?> getFirebaseUid() async {
-    return await storage.read(key: "firebase_uid");
+    return await storage.read(key: AppConstants.ssoAppFirebaseUId);
   }
 }
