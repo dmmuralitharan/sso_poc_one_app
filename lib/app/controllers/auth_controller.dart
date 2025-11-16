@@ -24,6 +24,16 @@ class AuthController extends GetxController {
     return accessToken != null && firebaseUid != null && userData != null;
   }
 
+  Rxn<Map<String, dynamic>> backendUser = Rxn<Map<String, dynamic>>();
+
+  Future<void> loadBackendUser() async {
+    final userDataJSON = await getUserData();
+
+    if (userDataJSON != null) {
+      backendUser.value = userDataJSON;
+    }
+  }
+
   // -------------------------
   // EMAIL REGISTER
   // -------------------------

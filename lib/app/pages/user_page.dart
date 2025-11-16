@@ -9,11 +9,18 @@ class UserPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = Get.find<AuthController>();
-    final user = auth.auth.currentUser;
+
+    // Load user data on UI build (safe because storage read is fast)
+    auth.loadBackendUser();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Welcome ${user?.displayName ?? user?.email ?? ''}"),
+        title: Obx(() {
+          final user = auth.backendUser.value;
+          final name = user?['name'] ?? user?['email'] ?? '';
+
+          return Text("Welcome $name");
+        }),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -25,45 +32,51 @@ class UserPage extends StatelessWidget {
         ],
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Profile Image Section
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey.shade300,
-              backgroundImage: (user?.photoURL != null)
-                  ? NetworkImage(user!.photoURL!)
-                  : null,
-              child: user?.photoURL == null
-                  ? const Icon(Icons.person, size: 50, color: Colors.grey)
-                  : null,
-            ),
+        child: Obx(() {
+          final user = auth.backendUser.value;
 
-            const SizedBox(height: 25),
+          if (user == null) {
+            return const CircularProgressIndicator();
+          }
 
-            // Name
-            Text(
-              user?.displayName ?? "No Name",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Profile Image
+              CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey.shade300,
+                backgroundImage: (user['photo_url'] != null)
+                    ? NetworkImage(user['photo_url'])
+                    : null,
+                child: user['photo_url'] == null
+                    ? const Icon(Icons.person, size: 50, color: Colors.grey)
+                    : null,
+              ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 25),
 
-            // Email
-            Text(
-              user?.email ?? "No Email",
-              style: const TextStyle(fontSize: 17),
-            ),
+              Text(
+                user['name'] ?? "No Name",
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
 
-            const SizedBox(height: 30),
+              const SizedBox(height: 10),
 
-            Text(
-              "UID: ${user?.uid}",
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-            ),
-          ],
-        ),
+              Text(
+                user['email'] ?? "No Email",
+                style: const TextStyle(fontSize: 17),
+              ),
+
+              const SizedBox(height: 30),
+
+              Text(
+                "Backend UID: ${user['id']}",
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
